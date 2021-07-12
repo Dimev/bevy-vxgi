@@ -249,3 +249,7 @@ fn movement(
 
 // plan: 
 // look at the light code
+// use the 3 ortho thing to voxelize the scene
+
+// structure:
+// 1 struct that holds the relevant i
