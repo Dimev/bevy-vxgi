@@ -37,7 +37,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: Color::GRAY,
         brightness: 0.02,
     });
 
