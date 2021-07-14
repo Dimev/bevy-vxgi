@@ -40,6 +40,7 @@ fn setup(
         color: Color::ORANGE_RED,
         brightness: 0.02,
     });
+
     // plane
     commands.spawn_bundle(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),
@@ -57,7 +58,7 @@ fn setup(
         mesh: meshes.add(Mesh::from(shape::Box::new(5.0, 0.15, 5.0))),
         transform,
         material: materials.add(StandardMaterial {
-            base_color: Color::INDIGO,
+            base_color: Color::RED,
             perceptual_roughness: 1.0,
             ..Default::default()
         }),
@@ -70,24 +71,26 @@ fn setup(
         mesh: meshes.add(Mesh::from(shape::Box::new(5.0, 0.15, 5.0))),
         transform,
         material: materials.add(StandardMaterial {
-            base_color: Color::INDIGO,
+            base_color: Color::GREEN,
             perceptual_roughness: 1.0,
             ..Default::default()
         }),
         ..Default::default()
     });
+	
     // cube
     commands
         .spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(StandardMaterial {
-                base_color: Color::PINK,
+                base_color: Color::BLUE,
                 ..Default::default()
             }),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..Default::default()
         })
         .insert(Movable);
+
     // sphere
     commands
         .spawn_bundle(PbrBundle {
@@ -96,91 +99,15 @@ fn setup(
                 ..Default::default()
             })),
             material: materials.add(StandardMaterial {
-                base_color: Color::LIME_GREEN,
-                ..Default::default()
+                base_color: Color::WHITE,
+                perceptual_roughness: 0.0,
+				metallic: 1.0,
+				..Default::default()
             }),
             transform: Transform::from_xyz(1.5, 1.0, 1.5),
             ..Default::default()
         })
         .insert(Movable);
-
-    // light
-    commands
-        .spawn_bundle(PointLightBundle {
-            // transform: Transform::from_xyz(5.0, 8.0, 2.0),
-            transform: Transform::from_xyz(1.0, 2.0, 0.0),
-            point_light: PointLight {
-                color: Color::RED,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with_children(|builder| {
-            builder.spawn_bundle(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::UVSphere {
-                    radius: 0.1,
-                    ..Default::default()
-                })),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::RED,
-                    emissive: Color::rgba_linear(100.0, 0.0, 0.0, 0.0),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            });
-        });
-
-    // light
-    commands
-        .spawn_bundle(PointLightBundle {
-            // transform: Transform::from_xyz(5.0, 8.0, 2.0),
-            transform: Transform::from_xyz(-1.0, 2.0, 0.0),
-            point_light: PointLight {
-                color: Color::GREEN,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with_children(|builder| {
-            builder.spawn_bundle(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::UVSphere {
-                    radius: 0.1,
-                    ..Default::default()
-                })),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::GREEN,
-                    emissive: Color::rgba_linear(0.0, 100.0, 0.0, 0.0),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            });
-        });
-
-    // light
-    commands
-        .spawn_bundle(PointLightBundle {
-            // transform: Transform::from_xyz(5.0, 8.0, 2.0),
-            transform: Transform::from_xyz(0.0, 4.0, 0.0),
-            point_light: PointLight {
-                color: Color::BLUE,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with_children(|builder| {
-            builder.spawn_bundle(PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::UVSphere {
-                    radius: 0.1,
-                    ..Default::default()
-                })),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::BLUE,
-                    emissive: Color::rgba_linear(0.0, 0.0, 100.0, 0.0),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            });
-        });
 
     const HALF_SIZE: f32 = 10.0;
     commands.spawn_bundle(DirectionalLightBundle {
