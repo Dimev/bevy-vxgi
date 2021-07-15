@@ -5,10 +5,9 @@ use bevy::{
     input::Input,
     math::{Quat, Vec3},
     pbr2::{
-        AmbientLight, DirectionalLight, DirectionalLightBundle, PbrBundle, PointLight,
-        PointLightBundle, StandardMaterial,
+        AmbientLight, DirectionalLight, DirectionalLightBundle, PbrBundle, StandardMaterial,
     },
-    prelude::{App, Assets, BuildChildren, KeyCode, Transform},
+    prelude::{App, Assets, KeyCode, Transform},
     render2::{
         camera::{OrthographicProjection, PerspectiveCameraBundle},
         color::Color,
@@ -16,6 +15,9 @@ use bevy::{
     },
     PipelinedDefaultPlugins,
 };
+
+pub mod render;
+pub mod bundle;
 
 fn main() {
     App::new()
