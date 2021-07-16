@@ -7,11 +7,9 @@
 
 // single pass for the orthographic pass
 
-//use bevy::crevice::std140::AsStd140;
+use crevice::std140::AsStd140;
 
 use crate::bundle::GiVolume;
-
-use bevy::crates::crevice::std140::AsStd140;
 
 use bevy::transform::components::{GlobalTransform, Transform};
 
