@@ -16,6 +16,9 @@ pub struct GiVolume {
 	/// number of cascades
 	pub cascades: u8,
 
+	/// smallest cascade size
+	pub size: f32,
+
 }
 
 #[derive(Copy, Clone, Bundle)]

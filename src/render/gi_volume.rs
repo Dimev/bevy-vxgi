@@ -17,22 +17,25 @@ use bevy::math::{const_vec3, Mat4, Vec3, Vec4};
 use bevy::ecs::prelude::*;
 use bevy::render2::{
 	shader::Shader,
+	render_phase::{Draw, DrawFunctions, RenderPhase, TrackedRenderPass},
+	core_pipeline::Transparent3dPhase,
 	render_resource::*,
+	texture::*,
 	renderer::{RenderContext, RenderDevice}
 };
 
 use bevy::pbr2::PbrShaders;
 
 pub struct ExtractedGiCascade {
-	projection_x: Mat4,
-	projection_y: Mat4,
-	projection_z: Mat4,
+	transform: GlobalTransform,
 	resolution: u32,
+	cascade: u8,
+	size: f32,
 }
 
 // this is for *one* projection
 #[repr(C)]
-#[derive(Copy, Clone, /*AsStd140,*/ Default, Debug)]
+#[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascade {
 	projection: Mat4,
 	resolution: u32,
@@ -75,7 +78,7 @@ impl FromWorld for GiShaders {
 			label: None,
 		});
 
-		// TODO, change
+		// TODO, change to pbr_shaders.mesh_layout once/if this is merged into bevy itself
 		let mesh_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
@@ -160,9 +163,39 @@ pub fn extract_gi_cascades(
 	for (entity, volume, transform) in volumes.iter() {
 
 		// here we get all active volumes
-		// each one has 3 matrices for each projection face
+		// each cascade actually needs to render 3 times, with 3 different projections
 		// these are calculated in prepare, this is just to find all active volumes, and get the cascade
+		for i in 0..volume.cascades {
 
+			commands.get_or_spawn(entity).insert(ExtractedGiCascade {
+				transform: *transform,
+				resolution: volume.resolution as u32,
+				cascade: i,
+				size: volume.size,
+			});
+		}
 	}
+}
+
+pub struct GiCascadeMeta {
+	pub view_cascades: DynamicUniformVec<GpuGiCascade>,
+}
+
+pub fn prepare_gi_cascades(
+	mut commands: Commands,
+	mut texture_cache: ResMut<TextureCache>,
+	render_device: Res<RenderDevice>,
+	views: Query<Entity, With<RenderPhase<Transparent3dPhase>>>,
+	mut cascade_meta: ResMut<GiCascadeMeta>,
+) {
+
+	// PERF: view.iter().count() could be views.iter().len() if we implemented ExactSizeIterator for archetype-only filters
+	cascade_meta
+		.view_cascades
+		.reserve_and_clear(views.iter().count(), &render_device);
+
+	// TODO: I assume I also need to get all lights here if I want to pass that to the voxelization shader?
+
+	
 
 }
