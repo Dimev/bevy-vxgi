@@ -209,6 +209,8 @@ name = "bevy-vxgi"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_core_pipeline",
+ "bevy_pbr2",
  "crevice",
 ]
 
@@ -220,7 +222,6 @@ dependencies = [
  "bevy_ecs",
  "bevy_reflect",
  "bevy_utils",
- "serde",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -244,7 +245,6 @@ dependencies = [
  "notify",
  "parking_lot",
  "rand",
- "ron",
  "serde",
  "thiserror",
  "wasm-bindgen",
@@ -281,12 +281,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_core_pipeline"
+version = "0.5.0"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_render2",
+]
+
+[[package]]
 name = "bevy_derive"
 version = "0.5.0"
 dependencies = [
  "Inflector",
  "bevy_macro_utils",
- "proc-macro2",
  "quote",
  "syn",
 ]
@@ -300,7 +308,6 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "bevy_utils",
- "parking_lot",
 ]
 
 [[package]]
@@ -327,11 +334,9 @@ dependencies = [
  "bevy_reflect",
  "bevy_tasks",
  "bevy_utils",
- "bitflags",
  "downcast-rs",
  "fixedbitset 0.4.0",
  "fxhash",
- "parking_lot",
  "rand",
  "serde",
  "thiserror",
@@ -359,7 +364,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_gltf"
+name = "bevy_gltf2"
 version = "0.5.0"
 dependencies = [
  "anyhow",
@@ -370,14 +375,15 @@ dependencies = [
  "bevy_ecs",
  "bevy_log",
  "bevy_math",
- "bevy_pbr",
+ "bevy_pbr2",
  "bevy_reflect",
- "bevy_render",
+ "bevy_render2",
  "bevy_scene",
  "bevy_transform",
  "gltf",
  "percent-encoding",
  "thiserror",
+ "wgpu",
 ]
 
 [[package]]
@@ -398,12 +404,13 @@ dependencies = [
  "bevy_asset",
  "bevy_audio",
  "bevy_core",
+ "bevy_core_pipeline",
  "bevy_derive",
  "bevy_diagnostic",
  "bevy_dynamic_plugin",
  "bevy_ecs",
  "bevy_gilrs",
- "bevy_gltf",
+ "bevy_gltf2",
  "bevy_input",
  "bevy_log",
  "bevy_math",
@@ -444,7 +451,6 @@ name = "bevy_macro_utils"
 version = "0.5.0"
 dependencies = [
  "cargo-manifest",
- "proc-macro2",
  "syn",
 ]
 
@@ -463,13 +469,11 @@ dependencies = [
  "bevy_app",
  "bevy_asset",
  "bevy_core",
- "bevy_derive",
  "bevy_ecs",
  "bevy_math",
  "bevy_reflect",
  "bevy_render",
  "bevy_transform",
- "bevy_window",
  "bytemuck",
 ]
 
@@ -480,6 +484,7 @@ dependencies = [
  "bevy_app",
  "bevy_asset",
  "bevy_core",
+ "bevy_core_pipeline",
  "bevy_ecs",
  "bevy_math",
  "bevy_reflect",
@@ -543,7 +548,6 @@ dependencies = [
  "parking_lot",
  "serde",
  "shaderc",
- "smallvec",
  "spirv-reflect",
  "thiserror",
 ]
@@ -570,7 +574,7 @@ dependencies = [
  "hex",
  "hexasphere",
  "image",
- "naga 0.5.0 (git+https://github.com/gfx-rs/naga?rev=0cf5484bba530f1134badbd2a1c1a8e9daf2e9c3)",
+ "naga",
  "once_cell",
  "parking_lot",
  "serde",
@@ -590,7 +594,6 @@ dependencies = [
  "bevy_reflect",
  "bevy_transform",
  "bevy_utils",
- "parking_lot",
  "ron",
  "serde",
  "thiserror",
@@ -626,6 +629,7 @@ dependencies = [
  "bevy_app",
  "bevy_asset",
  "bevy_core",
+ "bevy_core_pipeline",
  "bevy_ecs",
  "bevy_log",
  "bevy_math",
@@ -634,6 +638,8 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "bytemuck",
+ "guillotiere",
+ "rectangle-pack",
  "serde",
  "thiserror",
 ]
@@ -646,7 +652,6 @@ dependencies = [
  "async-executor",
  "event-listener",
  "futures-lite",
- "instant",
  "num_cpus",
  "wasm-bindgen-futures",
 ]
@@ -759,7 +764,6 @@ dependencies = [
  "bevy_app",
  "bevy_ecs",
  "bevy_input",
- "bevy_log",
  "bevy_math",
  "bevy_utils",
  "bevy_window",
@@ -1597,7 +1601,7 @@ dependencies = [
  "khronos-egl",
  "libloading",
  "log",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "parking_lot",
  "raw-window-handle",
  "wasm-bindgen",
@@ -1621,7 +1625,7 @@ dependencies = [
  "gfx-hal",
  "log",
  "metal",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "objc",
  "parking_lot",
  "profiling",
@@ -1644,7 +1648,7 @@ dependencies = [
  "gfx-renderdoc",
  "inplace_it",
  "log",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "objc",
  "parking_lot",
  "raw-window-handle",
@@ -1660,7 +1664,7 @@ checksum = "7fbb575ea793dd0507b3082f4f2cde62dc9f3cebd98f5cd49ba2a4da97a976fd"
 dependencies = [
  "bitflags",
  "external-memory",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "raw-window-handle",
  "thiserror",
 ]
@@ -1863,9 +1867,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hexasphere"
-version = "3.4.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "497fa99092cc737fe649ae39194b515fbc15ae27ebd437c9e3d9c8210341e0fc"
+checksum = "01ad65c2467b7da23aae13855ee8051eca73902ce2020e0887842c21ffaf8a35"
 dependencies = [
  "glam",
  "lazy_static",
@@ -2218,23 +2222,6 @@ name = "naga"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef670817eef03d356d5a509ea275e7dd3a78ea9e24261ea3cb2dfed1abb08f64"
-dependencies = [
- "bit-set",
- "bitflags",
- "codespan-reporting",
- "fxhash",
- "log",
- "num-traits",
- "petgraph",
- "rose_tree",
- "spirv_headers",
- "thiserror",
-]
-
-[[package]]
-name = "naga"
-version = "0.5.0"
-source = "git+https://github.com/gfx-rs/naga?rev=0cf5484bba530f1134badbd2a1c1a8e9daf2e9c3#0cf5484bba530f1134badbd2a1c1a8e9daf2e9c3"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -3383,7 +3370,7 @@ dependencies = [
  "arrayvec",
  "js-sys",
  "log",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "parking_lot",
  "raw-window-handle",
  "smallvec",
@@ -3415,7 +3402,7 @@ dependencies = [
  "gpu-alloc",
  "gpu-descriptor",
  "log",
- "naga 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "naga",
  "parking_lot",
  "profiling",
  "raw-window-handle",

@@ -8,6 +8,9 @@ edition = "2018"
 [dependencies]
 crevice = { path = "E:/rust/bevy-fork/bevy/crates/crevice" }
 bevy = { path = "E:/rust/bevy-fork/bevy", features = ["dynamic"] }
+bevy_core_pipeline = { path = "E:/rust/bevy-fork/bevy/pipelined/bevy_core_pipeline" }
+bevy_pbr2 = { path = "E:/rust/bevy-fork/bevy/pipelined/bevy_pbr2" }
+
 
 [profile.dev.package.bevy]
 opt-level = 3

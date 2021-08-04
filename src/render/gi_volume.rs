@@ -18,13 +18,16 @@ use bevy::ecs::prelude::*;
 use bevy::render2::{
 	shader::Shader,
 	render_phase::{Draw, DrawFunctions, RenderPhase, TrackedRenderPass},
-	core_pipeline::Transparent3dPhase,
 	render_resource::*,
 	texture::*,
-	renderer::{RenderContext, RenderDevice}
+	render_asset::RenderAssets,
+	renderer::{RenderContext, RenderDevice, RenderQueue}
 };
 
-use bevy::pbr2::PbrShaders;
+use bevy_core_pipeline::Transparent3dPhase;
+use bevy_pbr2::PbrShaders;
+
+//use bevy::pbr2::PbrShaders;
 
 pub struct ExtractedGiCascade {
 	transform: GlobalTransform,
@@ -78,7 +81,7 @@ impl FromWorld for GiShaders {
 			label: None,
 		});
 
-		// TODO, change to pbr_shaders.mesh_layout once/if this is merged into bevy itself
+		// TODO grab from pbr
 		let mesh_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
