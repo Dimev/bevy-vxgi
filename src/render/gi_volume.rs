@@ -29,14 +29,15 @@ use bevy_pbr2::PbrShaders;
 
 //use bevy::pbr2::PbrShaders;
 
+// info for the cascade
 pub struct ExtractedGiCascade {
 	transform: GlobalTransform,
 	resolution: u32,
-	cascade: u8,
+	cascade: u8, // which lod level it's at
 	size: f32,
 }
 
-// this is for *one* projection
+// this is for *one* projection for a cascade
 #[repr(C)]
 #[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascade {
@@ -47,7 +48,7 @@ pub struct GpuGiCascade {
 // max number of cascades allowed in the world at the same time
 const MAX_CASCADE_NUM: usize = 8;
 
-// and for all cascades
+// holds all cascades
 #[repr(C)]
 #[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascades {
