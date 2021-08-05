@@ -44,6 +44,17 @@ pub struct GpuGiCascade {
 	resolution: u32,
 }
 
+// max number of cascades
+const MAX_CASCADE_NUM: usize = 16;
+
+// and for all cascades
+#[repr(C)]
+#[derive(Copy, Clone, AsStd140, Default, Debug)]
+pub struct GpuGiCascades {
+	num_cascades: u32,
+	cascades: [GpuGiCascade; MAX_CASCADE_NUM],
+}
+
 // TODO: struct that sends all of them to the pbr shader
 
 pub struct GiShaders {
@@ -184,12 +195,19 @@ pub struct GiCascadeMeta {
 	pub view_cascades: DynamicUniformVec<GpuGiCascade>,
 }
 
+// max number of mips a volume can have
+const MAX_VOLUME_MIPS: u32 = 8;
+
+// and it's format
+const VOLUME_TEXTURE_FORMAT: TextureFormat = TextureFormat::Rgba32Float;
+
 pub fn prepare_gi_cascades(
 	mut commands: Commands,
 	mut texture_cache: ResMut<TextureCache>,
 	render_device: Res<RenderDevice>,
 	views: Query<Entity, With<RenderPhase<Transparent3dPhase>>>,
 	mut cascade_meta: ResMut<GiCascadeMeta>,
+	cascades: &Query<&ExtractedGiCascade>
 ) {
 
 	// PERF: view.iter().count() could be views.iter().len() if we implemented ExactSizeIterator for archetype-only filters
@@ -199,6 +217,27 @@ pub fn prepare_gi_cascades(
 
 	// TODO: I assume I also need to get all lights here if I want to pass that to the voxelization shader?
 
-	
+	for entity in views.iter() {
 
+		// go over all cascades
+		// we need a seperate texture for all cascades due to size
+		// this is roughly similar to how light does it but not really
+		for (index, cascade) in cascades.iter().enumerate() {
+
+			// make the volume texture
+			let volume_texture = texture_cache.get(
+				&render_device,
+				TextureDescriptor {
+					size: Extent3d { width: cascade.resolution, height: cascade.resolution, depth_or_array_layers: cascade.resolution},
+					mip_level_count: MAX_VOLUME_MIPS,
+					sample_count: 1,
+					dimension: TextureDimension::D3,
+					format: VOLUME_TEXTURE_FORMAT,
+					usage: TextureUsage::SAMPLED | TextureUsage::STORAGE,
+					label: None,
+				},
+			);
+
+		}
+	}
 }
