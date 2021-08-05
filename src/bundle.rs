@@ -24,6 +24,7 @@ pub struct GiVolume {
 #[derive(Copy, Clone, Bundle)]
 pub struct GiVolumeBundle {
 
+	pub volume: GiVolume,
 	pub transform: Transform,
 	pub global_transform : GlobalTransform,
 }
