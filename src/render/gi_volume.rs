@@ -44,15 +44,15 @@ pub struct GpuGiCascade {
 	resolution: u32,
 }
 
-// max number of cascades
-const MAX_CASCADE_NUM: usize = 16;
+// max number of cascades allowed in the world at the same time
+const MAX_CASCADE_NUM: usize = 8;
 
 // and for all cascades
 #[repr(C)]
 #[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascades {
 	num_cascades: u32,
-	cascades: [GpuGiCascade; MAX_CASCADE_NUM],
+	cascades: [GpuGiCascade; MAX_CASCADE_NUM * 3], // we need 3, due to having one per axis
 }
 
 // TODO: struct that sends all of them to the pbr shader
@@ -191,6 +191,22 @@ pub fn extract_gi_cascades(
 	}
 }
 
+pub struct ViewGiCascade {
+
+	pub volume_texture: Texture,
+	pub volume_texture_view: TextureView,
+
+}
+
+pub struct ViewGiCascades {
+
+	pub textures: [ViewGiCascade; MAX_CASCADE_NUM],
+	pub cascades: Vec<Entity>,
+	pub gpu_cascade_binding_index: u32,
+
+}
+
+#[derive(Default)]
 pub struct GiCascadeMeta {
 	pub view_cascades: DynamicUniformVec<GpuGiCascade>,
 }
@@ -222,7 +238,7 @@ pub fn prepare_gi_cascades(
 		// go over all cascades
 		// we need a seperate texture for all cascades due to size
 		// this is roughly similar to how light does it but not really
-		for (index, cascade) in cascades.iter().enumerate() {
+		for (index, cascade) in cascades.iter().enumerate().take(MAX_CASCADE_NUM) {
 
 			// make the volume texture
 			let volume_texture = texture_cache.get(
@@ -237,6 +253,16 @@ pub fn prepare_gi_cascades(
 					label: None,
 				},
 			);
+
+			// get the view for it
+
+			// get the projection matrix
+
+			// store it into the gpu gi cascades
+
+			// and store the textures
+
+			// and add it to the commands
 
 		}
 	}
