@@ -104,7 +104,17 @@ impl FromWorld for GiShaders {
                     min_binding_size: BufferSize::new(Mat4::std140_size_static() as u64),
                 },
                 count: None,
-            }],
+            },
+			BindGroupLayoutEntry {
+				binding: 1,
+				visibility: ShaderStage::FRAGMENT,
+				ty: BindingType::StorageTexture {
+					access: StorageTextureAccess::ReadWrite,
+					format: TextureFormat::Rgba32Float,
+					view_dimension: TextureViewDimension::D3,
+				},
+				count: None,
+			}], // TODO add one of the textures here!
             label: None,
         });
 
