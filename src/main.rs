@@ -4,9 +4,7 @@ use bevy::{
     ecs::prelude::*,
     input::Input,
     math::{Quat, Vec3},
-    pbr2::{
-        AmbientLight, DirectionalLight, DirectionalLightBundle, PbrBundle, StandardMaterial,
-    },
+    pbr2::{AmbientLight, DirectionalLight, DirectionalLightBundle, PbrBundle, StandardMaterial},
     prelude::{App, Assets, KeyCode, Transform},
     render2::{
         camera::{OrthographicProjection, PerspectiveCameraBundle},
@@ -16,8 +14,8 @@ use bevy::{
     PipelinedDefaultPlugins,
 };
 
-pub mod render;
 pub mod bundle;
+pub mod render;
 
 fn main() {
     App::new()
@@ -79,7 +77,7 @@ fn setup(
         }),
         ..Default::default()
     });
-	
+
     // cube
     commands
         .spawn_bundle(PbrBundle {
@@ -103,8 +101,8 @@ fn setup(
             material: materials.add(StandardMaterial {
                 base_color: Color::WHITE,
                 perceptual_roughness: 0.0,
-				metallic: 1.0,
-				..Default::default()
+                metallic: 1.0,
+                ..Default::default()
             }),
             transform: Transform::from_xyz(1.5, 1.0, 1.5),
             ..Default::default()
@@ -176,7 +174,7 @@ fn movement(
 
 // https://github.com/cart/bevy/tree/pipelined-rendering
 
-// plan: 
+// plan:
 // look at the light code
 // use the 3 ortho thing to voxelize the scene
 
