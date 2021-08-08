@@ -6,10 +6,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-crevice = { path = "E:/rust/bevy-fork/bevy/crates/crevice" }
-bevy = { path = "E:/rust/bevy-fork/bevy", features = ["dynamic"] }
-bevy_core_pipeline = { path = "E:/rust/bevy-fork/bevy/pipelined/bevy_core_pipeline" }
-bevy_pbr2 = { path = "E:/rust/bevy-fork/bevy/pipelined/bevy_pbr2" }
+crevice = { path = "E:/rust/own-bevy-fork/bevy/crates/crevice" }
+bevy = { path = "E:/rust/own-bevy-fork/bevy", features = ["dynamic"] }
+bevy_core_pipeline = { path = "E:/rust/own-bevy-fork/bevy/pipelined/bevy_core_pipeline" }
+bevy_pbr2 = { path = "E:/rust/own-bevy-fork/bevy/pipelined/bevy_pbr2" }
 
 
 [profile.dev.package.bevy]
