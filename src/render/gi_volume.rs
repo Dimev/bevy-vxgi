@@ -58,19 +58,21 @@ pub struct GpuGiCascade {
 const MAX_CASCADE_NUM: usize = 8;
 
 // holds all cascades
-/*
+// used for passing to the pbr shader
 #[repr(C)]
 #[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascades {
     num_cascades: u32,
     cascades: [GpuGiCascade; MAX_CASCADE_NUM * 3], // we need 3, due to having one per axis
 }
-*/
-// TODO: struct that sends all of them to the pbr shader
+
 
 pub struct GiShaders {
     pipeline: RenderPipeline,
     view_layout: BindGroupLayout,
+	mesh_layout: BindGroupLayout,
+	volume_layout: BindGroupLayout,
+	volume_sampler: Sampler,
 }
 
 impl FromWorld for GiShaders {
@@ -114,7 +116,14 @@ impl FromWorld for GiShaders {
                     },
                     count: None,
                 },
-                BindGroupLayoutEntry {
+            ], // TODO add one of the textures here!
+            label: None,
+        });
+
+		// and for the voxelizer
+		let volume_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+			entries: &[
+				BindGroupLayoutEntry {
                     binding: 1,
                     visibility: ShaderStage::FRAGMENT,
                     ty: BindingType::StorageTexture {
@@ -124,14 +133,14 @@ impl FromWorld for GiShaders {
                     },
                     count: None,
                 },
-            ], // TODO add one of the textures here!
-            label: None,
-        });
+			],
+			label: None,
+		});
 
         let pipeline_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&view_layout, &mesh_layout],
+            bind_group_layouts: &[&view_layout, &mesh_layout, &volume_layout],
         });
 
         let pipeline = render_device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -186,6 +195,17 @@ impl FromWorld for GiShaders {
         GiShaders {
             pipeline,
             view_layout,
+			mesh_layout,
+			volume_layout,
+			volume_sampler: render_device.create_sampler(&SamplerDescriptor {
+				address_mode_u: AddressMode::ClampToEdge,
+				address_mode_v: AddressMode::ClampToEdge,
+				address_mode_w: AddressMode::ClampToEdge,
+				mag_filter: FilterMode::Linear,
+				min_filter: FilterMode::Linear,
+				mipmap_filter: FilterMode::Nearest,
+				..Default::default()
+			})
         }
     }
 }
@@ -223,6 +243,7 @@ pub struct ViewGiCascades {
 #[derive(Default)]
 pub struct GiCascadeMeta {
     pub view_cascades: DynamicUniformVec<GpuGiCascade>,
+	pub bind_group: Option<BindGroup>,
 }
 
 // max number of mips a volume can have
@@ -247,39 +268,49 @@ pub fn prepare_gi_cascades(
     // TODO: I assume I also need to get all lights here if I want to pass that to the voxelization shader?
 
     for entity in views.iter() {
+
+		// make the volume texture
+		let volume_texture = texture_cache.get(
+			&render_device,
+			TextureDescriptor {
+				size: Extent3d { // TODO DIFFERENT SIZE, BECAUSE THIS CONSUMES HALF A GB OF VRAM
+					width: 256,
+					height: 256,
+					depth_or_array_layers: MAX_CASCADE_NUM as u32 * 256,
+				},
+				mip_level_count: MAX_VOLUME_MIPS,
+				sample_count: 1,
+				dimension: TextureDimension::D3,
+				format: VOLUME_TEXTURE_FORMAT,
+				usage: TextureUsage::SAMPLED | TextureUsage::STORAGE,
+				label: None,
+			},
+		);
+
+		// get the view for it
+		let volume_texture_view = volume_texture.texture.create_view(&TextureViewDescriptor {
+			label: None,
+			format: None,
+			dimension: Some(TextureViewDimension::D3),
+			aspect: TextureAspect::All,
+			base_mip_level: 0,
+			mip_level_count: None,
+			base_array_layer: 0,
+			array_layer_count: None,
+		});
+
+		// store our view cascades
+		//let mut view_cascades = Vec::new();
+
+		// and the gpu ver to send to the gpu
+
+
         // go over all cascades
         // we need a seperate texture for all cascades due to size
         // this is roughly similar to how light does it but not really
         for (index, cascade) in cascades.iter().enumerate().take(MAX_CASCADE_NUM) {
-            // make the volume texture
-            let volume_texture = texture_cache.get(
-                &render_device,
-                TextureDescriptor {
-                    size: Extent3d {
-                        width: cascade.resolution,
-                        height: cascade.resolution,
-                        depth_or_array_layers: cascade.resolution,
-                    },
-                    mip_level_count: MAX_VOLUME_MIPS,
-                    sample_count: 1,
-                    dimension: TextureDimension::D3,
-                    format: VOLUME_TEXTURE_FORMAT,
-                    usage: TextureUsage::SAMPLED | TextureUsage::STORAGE,
-                    label: None,
-                },
-            );
-
-            // get the view for it
-            let volume_texture_view = volume_texture.texture.create_view(&TextureViewDescriptor {
-                label: None,
-                format: None,
-                dimension: Some(TextureViewDimension::D3),
-                aspect: TextureAspect::All,
-                base_mip_level: 0,
-                mip_level_count: None,
-                base_array_layer: 0,
-                array_layer_count: None,
-            });
+            
+			
 
             // get the projection matrix
             // TODO: FIX
