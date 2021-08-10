@@ -25,6 +25,7 @@ use bevy::transform::components::{GlobalTransform, Transform};
 use bevy::ecs::prelude::*;
 use bevy::math::{const_vec3, Mat4, Vec3, Vec4};
 use bevy::render2::{
+	render_graph::{Node, NodeRunError, RenderGraphContext, SlotInfo, SlotType},
     render_asset::RenderAssets,
     render_phase::{Draw, DrawFunctions, RenderPhase, TrackedRenderPass},
     render_resource::*,
@@ -64,14 +65,17 @@ const MAX_CASCADE_NUM: usize = 8;
 #[derive(Copy, Clone, AsStd140, Default, Debug)]
 pub struct GpuGiCascades {
     num_cascades: u32,
-    cascades: [GpuGiCascade; MAX_CASCADE_NUM * 3], // we need 3, due to having one per axis
+    cascades: [GpuGiCascade; MAX_CASCADE_NUM], 
 }
 
 
 pub struct GiShaders {
-    pipeline: RenderPipeline,
+    vertex_pipeline: ComputePipeline,
+	voxelize_pipeline: ComputePipeline,
+	mipmap_pipeline: ComputePipeline,
     view_layout: BindGroupLayout,
 	mesh_layout: BindGroupLayout,
+	mesh_model_layout: BindGroupLayout,
 	volume_layout: BindGroupLayout,
 	volume_sampler: Sampler,
 }
@@ -90,13 +94,13 @@ impl FromWorld for GiShaders {
                 // view
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::FRAGMENT,
+                    visibility: ShaderStage::COMPUTE,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: true,
                         // TODO: change this to ViewUniform::std140_size_static once crevice fixes this!
                         // Context: https://github.com/LPGhatguy/crevice/issues/29
-                        min_binding_size: BufferSize::new(80),
+                        min_binding_size: BufferSize::new(80), // TODO
                     },
                     count: None,
                 },
@@ -109,28 +113,55 @@ impl FromWorld for GiShaders {
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStage::VERTEX,
+                    visibility: ShaderStage::COMPUTE,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: true,
-                        min_binding_size: BufferSize::new(Mat4::std140_size_static() as u64),
+                        min_binding_size: BufferSize::new(Mat4::std140_size_static() as u64), // TODO
                     },
                     count: None,
                 },
-            ], // TODO add one of the textures here!
+            ], 
             label: None,
         });
 
 		// and for the voxelizer
 		let volume_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-			entries: &[
+			entries: &[ // TODO: add a buffer so we can store the gpugicascades
 				BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStage::FRAGMENT,
+                    binding: 0,
+                    visibility: ShaderStage::COMPUTE,
                     ty: BindingType::StorageTexture {
                         access: StorageTextureAccess::ReadWrite,
                         format: TextureFormat::Rgba32Float,
                         view_dimension: TextureViewDimension::D3,
+                    },
+                    count: None,
+                },
+			],
+			label: None,
+		});
+
+		// vertex and index buffers
+		let mesh_model_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+			entries: &[
+				BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true},
+                        has_dynamic_offset: true,
+                        min_binding_size: BufferSize::new(Mat4::std140_size_static() as u64), // TODO
+                    },
+                    count: None,
+                },
+				BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true},
+                        has_dynamic_offset: true,
+                        min_binding_size: BufferSize::new(Mat4::std140_size_static() as u64), // TODO
                     },
                     count: None,
                 },
@@ -144,6 +175,28 @@ impl FromWorld for GiShaders {
             bind_group_layouts: &[&view_layout, &mesh_layout, &volume_layout],
         });
 
+		let voxelize_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
+			label: None,
+			layout: Some(&pipeline_layout),
+			entry_point: "vertex",
+			module: &shader_module,
+		});
+
+		let vertex_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
+			label: None,
+			layout: Some(&pipeline_layout),
+			entry_point: "voxelize",
+			module: &shader_module,
+		});
+
+		let mipmap_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
+			label: None,
+			layout: Some(&pipeline_layout),
+			entry_point: "mipmap",
+			module: &shader_module,
+		});
+
+		/*
         let pipeline = render_device.create_render_pipeline(&RenderPipelineDescriptor {
             label: None,
             vertex: VertexState {
@@ -192,9 +245,13 @@ impl FromWorld for GiShaders {
                 conservative: false,
             },
         });
+		*/
 
         GiShaders {
-            pipeline,
+            vertex_pipeline,
+			voxelize_pipeline,
+			mipmap_pipeline,
+			mesh_model_layout,
             view_layout,
 			mesh_layout,
 			volume_layout,
@@ -306,7 +363,7 @@ pub fn prepare_gi_cascades(
 		// store our view cascades
 		let mut gpu_cascades = GpuGiCascades {
 			num_cascades: (MAX_CASCADE_NUM as u32).min(volume.cascades as u32),
-			cascades: [GpuGiCascade::default(); MAX_CASCADE_NUM * 3],
+			cascades: [GpuGiCascade::default(); MAX_CASCADE_NUM],
 		};
 
 		// go over all cascades
@@ -314,21 +371,17 @@ pub fn prepare_gi_cascades(
 		// this is roughly similar to how light does it but not really
 		for cascade in 0..((volume.cascades as usize).min(MAX_CASCADE_NUM)) {
 
-			// we need 3 orientations, so take care of that
-			for axis in 0..3 {
 
-				// get the projection matrix
-				// TODO: FIX
-				let projection = volume.transform;
+			// get the projection matrix
+			// TODO: FIX
+			let projection = volume.transform;
 
-				// store it into the gpu gi cascades
-				gpu_cascades.cascades[cascade * 3 + axis] = GpuGiCascade {
-					projection: Mat4::default(),
-					resolution: volume.resolution,
-					texture_index: cascade as u32,
-				};
-
-			}
+			// store it into the gpu gi cascades
+			gpu_cascades.cascades[cascade] = GpuGiCascade {
+				projection: Mat4::default(),
+				resolution: volume.resolution,
+				texture_index: cascade as u32,
+			};
 		}
 
 		// and add it to the commands
@@ -358,9 +411,38 @@ impl VoxelizePassNode {
 
 	pub fn new(world: &mut World) -> Self {
 
-		todo!();
-		//Self { }
+		Self {
+			main_view_query: QueryState::new(world),
+			view_volume_query: QueryState::new(world),
+		}
+	}
+}
 
+impl Node for VoxelizePassNode {
+
+	fn input(&self) -> Vec<SlotInfo> {
+		vec![SlotInfo::new(VoxelizePassNode::IN_VIEW, SlotType::Entity)]
 	}
 
+	fn update(&mut self, world: &mut World) {
+		self.main_view_query.update_archetypes(world);
+		self.view_volume_query.update_archetypes(world);
+	}
+
+	fn run(&self, graph: &mut RenderGraphContext, render_context: &mut RenderContext, world: &World) -> Result<(), NodeRunError> {
+
+		let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
+
+		if let Ok(view_volume) = self.main_view_query.get_manual(world, view_entity) {
+
+			//let view
+
+			// TODO: only need to get one compute pass done, because we can do all volumes + cascades in one go
+			// TODO: figure out how this works
+
+		}
+
+		Ok(())
+
+	}
 }
