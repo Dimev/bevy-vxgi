@@ -39,11 +39,11 @@ use bevy_pbr2::PbrShaders;
 //use bevy::pbr2::PbrShaders;
 
 // info for the cascade
-pub struct ExtractedGiCascade {
-    transform: GlobalTransform,
+pub struct ExtractedGiVolume {
+    transform: GlobalTransform, // origin and scale
     resolution: u32,
-    cascade: u8, // which lod level it's at
-    size: f32,
+    cascades: u8, // how many lod levels we have
+    size: f32, // size of the first lod
 }
 
 // this is for *one* projection for a cascade
@@ -52,6 +52,7 @@ pub struct ExtractedGiCascade {
 pub struct GpuGiCascade {
     projection: Mat4,
     resolution: u32,
+	texture_index: u32, // which part of the texture to use
 }
 
 // max number of cascades allowed in the world at the same time
@@ -214,40 +215,43 @@ pub fn extract_gi_cascades(
     mut commands: Commands,
     volumes: Query<(Entity, &GiVolume, &GlobalTransform)>,
 ) {
-    for (entity, volume, transform) in volumes.iter() {
+	
+	// we only need 1
+    for (_, volume, transform) in volumes.iter().take(1) {
         // here we get all active volumes
         // each cascade actually needs to render 3 times, with 3 different projections
         // these are calculated in prepare, this is just to find all active volumes, and get the cascade
-        for i in 0..volume.cascades {
-            commands.get_or_spawn(entity).insert(ExtractedGiCascade {
-                transform: *transform,
-                resolution: volume.resolution as u32,
-                cascade: i,
-                size: volume.size,
-            });
-        }
+		commands.insert_resource(ExtractedGiVolume {
+			transform: *transform,
+			resolution: volume.resolution as u32,
+			cascades: volume.cascades,
+			size: volume.size,
+		});
+        
     }
+	
 }
+
+// Views are needed for every camera that renders, so here we need to store everything
 /*
-pub struct ViewGiCascade {
+pub struct ViewGiVolume {
     pub volume_texture: Texture,
     pub volume_texture_view: TextureView,
 }
-
-pub struct ViewGiCascades {
-    pub textures: [ViewGiCascade; MAX_CASCADE_NUM],
-    pub cascades: Vec<Entity>,
-    pub gpu_cascade_binding_index: u32,
-}
 */
+pub struct ViewGiVolumes {
+	pub volume_texture: Texture,
+    pub volume_texture_view: TextureView,
+	pub gpu_volume_binding_index: u32,
+}
+
+
+
 #[derive(Default)]
 pub struct GiCascadeMeta {
-    pub view_cascades: DynamicUniformVec<GpuGiCascade>,
+    pub view_cascades: DynamicUniformVec<GpuGiCascades>,
 	pub bind_group: Option<BindGroup>,
 }
-
-// max number of mips a volume can have
-const MAX_VOLUME_MIPS: u32 = 8;
 
 // and it's format
 const VOLUME_TEXTURE_FORMAT: TextureFormat = TextureFormat::Rgba32Float;
@@ -258,27 +262,27 @@ pub fn prepare_gi_cascades(
     render_device: Res<RenderDevice>,
     views: Query<Entity, With<RenderPhase<Transparent3dPhase>>>,
     mut cascade_meta: ResMut<GiCascadeMeta>,
-    cascades: &Query<&ExtractedGiCascade>,
+    volume: Res<ExtractedGiVolume>,
 ) {
-    // PERF: view.iter().count() could be views.iter().len() if we implemented ExactSizeIterator for archetype-only filters
+    // reserve the right amount of space for the cascades
     cascade_meta
         .view_cascades
         .reserve_and_clear(views.iter().count(), &render_device);
 
     // TODO: I assume I also need to get all lights here if I want to pass that to the voxelization shader?
 
-    for entity in views.iter() {
+	for entity in views.iter() {
 
-		// make the volume texture
+		// get the volume texture, with the right amount of memory allocated
 		let volume_texture = texture_cache.get(
 			&render_device,
 			TextureDescriptor {
 				size: Extent3d { // TODO DIFFERENT SIZE, BECAUSE THIS CONSUMES HALF A GB OF VRAM
-					width: 256,
-					height: 256,
-					depth_or_array_layers: MAX_CASCADE_NUM as u32 * 256,
+					width: volume.resolution,
+					height: volume.resolution,
+					depth_or_array_layers: volume.resolution * (MAX_CASCADE_NUM as u32).min(volume.cascades as u32),
 				},
-				mip_level_count: MAX_VOLUME_MIPS,
+				mip_level_count: volume.resolution.next_power_of_two(), // this is the same as the log of the resolution
 				sample_count: 1,
 				dimension: TextureDimension::D3,
 				format: VOLUME_TEXTURE_FORMAT,
@@ -300,27 +304,63 @@ pub fn prepare_gi_cascades(
 		});
 
 		// store our view cascades
-		//let mut view_cascades = Vec::new();
+		let mut gpu_cascades = GpuGiCascades {
+			num_cascades: (MAX_CASCADE_NUM as u32).min(volume.cascades as u32),
+			cascades: [GpuGiCascade::default(); MAX_CASCADE_NUM * 3],
+		};
 
-		// and the gpu ver to send to the gpu
+		// go over all cascades
+		// we need a seperate texture for all cascades due to size
+		// this is roughly similar to how light does it but not really
+		for cascade in 0..((volume.cascades as usize).min(MAX_CASCADE_NUM)) {
 
+			// we need 3 orientations, so take care of that
+			for axis in 0..3 {
 
-        // go over all cascades
-        // we need a seperate texture for all cascades due to size
-        // this is roughly similar to how light does it but not really
-        for (index, cascade) in cascades.iter().enumerate().take(MAX_CASCADE_NUM) {
-            
-			
+				// get the projection matrix
+				// TODO: FIX
+				let projection = volume.transform;
 
-            // get the projection matrix
-            // TODO: FIX
-            let projection = cascade.transform;
+				// store it into the gpu gi cascades
+				gpu_cascades.cascades[cascade * 3 + axis] = GpuGiCascade {
+					projection: Mat4::default(),
+					resolution: volume.resolution,
+					texture_index: cascade as u32,
+				};
 
-            // store it into the gpu gi cascades
+			}
+		}
 
-            // and store the textures
+		// and add it to the commands
+		commands.entity(entity).insert(ViewGiVolumes {
+			volume_texture: volume_texture.texture,
+			volume_texture_view,
+			gpu_volume_binding_index: cascade_meta.view_cascades.push(gpu_cascades)
+		});
+	}
 
-            // and add it to the commands
-        }
-    }
+	cascade_meta
+		.view_cascades
+		.write_to_staging_buffer(&render_device);
+
+}
+
+pub struct VoxelizePhase;
+
+pub struct VoxelizePassNode {
+	main_view_query: QueryState<&'static ViewGiVolumes>,
+	view_volume_query: QueryState<(&'static ViewGiVolumes, &'static RenderPhase<VoxelizePhase>)>,
+}
+
+impl VoxelizePassNode {
+
+	pub const IN_VIEW: &'static str = "view";
+
+	pub fn new(world: &mut World) -> Self {
+
+		todo!();
+		//Self { }
+
+	}
+
 }
