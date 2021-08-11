@@ -70,7 +70,7 @@ pub struct GpuGiCascades {
 
 
 pub struct GiShaders {
-    vertex_pipeline: ComputePipeline,
+    //vertex_pipeline: ComputePipeline,
 	voxelize_pipeline: ComputePipeline,
 	mipmap_pipeline: ComputePipeline,
     view_layout: BindGroupLayout,
@@ -168,7 +168,8 @@ impl FromWorld for GiShaders {
 			],
 			label: None,
 		});
-
+		
+		// we'll need index buffer, vertex buffer layouts, + mesh transform, mesh material, lights and the cascades as inputs
         let pipeline_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
@@ -181,14 +182,14 @@ impl FromWorld for GiShaders {
 			entry_point: "vertex",
 			module: &shader_module,
 		});
-
+		/*
 		let vertex_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
 			label: None,
 			layout: Some(&pipeline_layout),
 			entry_point: "voxelize",
 			module: &shader_module,
 		});
-
+		*/
 		let mipmap_pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
 			label: None,
 			layout: Some(&pipeline_layout),
@@ -248,7 +249,7 @@ impl FromWorld for GiShaders {
 		*/
 
         GiShaders {
-            vertex_pipeline,
+            //vertex_pipeline,
 			voxelize_pipeline,
 			mipmap_pipeline,
 			mesh_model_layout,
@@ -334,7 +335,7 @@ pub fn prepare_gi_cascades(
 		let volume_texture = texture_cache.get(
 			&render_device,
 			TextureDescriptor {
-				size: Extent3d { // TODO DIFFERENT SIZE, BECAUSE THIS CONSUMES HALF A GB OF VRAM
+				size: Extent3d { // TODO CHECK IF SIZE IS ALLOWED
 					width: volume.resolution,
 					height: volume.resolution,
 					depth_or_array_layers: volume.resolution * (MAX_CASCADE_NUM as u32).min(volume.cascades as u32),
@@ -439,6 +440,8 @@ impl Node for VoxelizePassNode {
 
 			// TODO: only need to get one compute pass done, because we can do all volumes + cascades in one go
 			// TODO: figure out how this works
+			// TODO: first, run only one compute pass on all triangles, and per triangle, write to the volume
+			// THEN: generate mipmaps for the volume
 
 		}
 
