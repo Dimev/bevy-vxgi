@@ -21,8 +21,9 @@ use crevice::std140::AsStd140;
 use crate::bundle::GiVolume;
 
 use bevy::transform::components::{GlobalTransform, Transform};
+use bevy_pbr2::{ExtractedMeshes, MeshMeta, PbrShaders};
 
-use bevy::ecs::prelude::*;
+use bevy::ecs::{prelude::*, system::SystemState};
 use bevy::math::{const_vec3, Mat4, Vec3, Vec4};
 use bevy::render2::{
 	render_graph::{Node, NodeRunError, RenderGraphContext, SlotInfo, SlotType},
@@ -32,10 +33,11 @@ use bevy::render2::{
     renderer::{RenderContext, RenderDevice, RenderQueue},
     shader::Shader,
     texture::*,
+	mesh::Mesh,
+	view::{ExtractedView, ViewUniformOffset},
 };
 
 use bevy_core_pipeline::Transparent3dPhase;
-use bevy_pbr2::PbrShaders;
 
 //use bevy::pbr2::PbrShaders;
 
@@ -442,6 +444,24 @@ impl Node for VoxelizePassNode {
 			// TODO: figure out how this works
 			// TODO: first, run only one compute pass on all triangles, and per triangle, write to the volume
 			// THEN: generate mipmaps for the volume
+			let pass_descriptor = ComputePassDescriptor { label: None };
+
+			let draw_functions = world.get_resource::<DrawFunctions>().unwrap();
+
+			// start the compute pass for voxelization
+			let compute_pass = render_context
+				.command_encoder
+				.begin_compute_pass(&pass_descriptor);
+
+			let mut draw_functions = draw_functions.write();
+
+			//let mut tracked_pass = TrackedComputePass TODO
+
+			//for drawable in RenderPhase<VoxelizePhase>::defa
+
+			// go over all drawable objects
+
+				// draw
 
 		}
 
@@ -449,3 +469,34 @@ impl Node for VoxelizePassNode {
 
 	}
 }
+
+type VoxelizeMeshParams<'s, 'w> = (
+	Res<'w, GiShaders>,
+	Res<'w, ExtractedMeshes>,
+	Res<'w, GiCascadeMeta>,
+	Res<'w, MeshMeta>,
+	Res<'w, RenderAssets<Mesh>>,
+);
+
+pub struct VoxelizeMesh {
+	params: SystemState<VoxelizeMeshParams<'static, 'static>>,
+}
+
+impl VoxelizeMesh {
+	pub fn new(world: &mut World) -> Self {
+		Self { 
+			params: SystemState::new(world), 
+		}
+	}
+}
+/*
+impl Draw for VoxelizeMesh {
+
+	fn draw<'w>(
+		&mut self,
+		world: &'w World,
+		pass: &mut 
+	)
+
+}
+*/
